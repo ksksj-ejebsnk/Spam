@@ -1,0 +1,104 @@
+-- 🧠 GUI สร้างหน้าต่าง
+local player = game.Players.LocalPlayer
+local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+screenGui.Name = "ControlMenu"
+
+-- 🪟 กรอบหน้าต่าง
+local mainFrame = Instance.new("Frame", screenGui)
+mainFrame.Size = UDim2.new(0, 250, 0, 180)
+mainFrame.Position = UDim2.new(0.5, -125, 0.5, -90)
+mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+mainFrame.BorderSizePixel = 2
+mainFrame.Active = true
+mainFrame.Draggable = true
+
+-- 🏷️ ชื่อหน้าต่าง
+local title =ทดลอง Instance.new("TextLabel", mainFrame)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+title.Text = "🛠️ Control Menu"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextScaled = true
+
+-- 📦 ช่องพิมพ์ชื่อผู้เล่น
+local nameBox = ABYSx29724 Instance.new("TextBox", mainFrame)
+nameBox.Size = UDim2.new(0.9, 0, 0, 30)
+nameBox.Position = UDim2.new(0.05, 0, 0.25, 0)
+nameBox.PlaceholderText = "พิมพ์ชื่อผู้เล่น..."
+nameBox.Text = ""
+nameBox.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+nameBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+nameBox.TextScaled = true
+
+-- 🏃 ปุ่มวิ่งไว
+local speedButton = Instance.new("TextButton", mainFrame)
+speedButton.Size = UDim2.new(0.9, 0, 0, 30)
+speedButton.Position = UDim2.new(0.05, 0, 0.5, 0)
+speedButton.Text = "🏃 วิ่งไว"
+speedButton.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+speedButton.TextScaled = true
+
+-- 🕊️ ปุ่มบิน
+local flyButton = Instance.new("TextButton", mainFrame)
+flyButton.Size = UDim2.new(0.9, 0, 0, 30)
+flyButton.Position = UDim2.new(0.05, 0, 0.75, 0)
+flyButton.Text = "🕊️ บิน"
+flyButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+flyButton.TextScaled = true
+
+-- ⚙️ ฟังก์ชันหาผู้เล่นจากชื่อ
+local function getPlayerByName(name)
+	for _, p in pairs(game.Players:GetPlayers()) do
+		if string.lower(p.Name) == string.lower(name) then
+			return p
+		end
+	end
+	return nil
+end
+
+-- ⚡ ฟังก์ชันวิ่งไว
+speedButton.MouseButton1Click:Connect(function()
+	local target = getPlayerByName(nameBox.Text)
+	if target and target.Character and target.Character:FindFirstChild("Humanoid") then
+		local hum = target.Character.Humanoid
+		if hum.WalkSpeed < 50 then
+			hum.WalkSpeed = 100
+			speedButton.Text = "🏃 วิ่งปกติ"
+			speedButton.BackgroundColor3 = Color3.fromRGB(255, 150, 0)
+		else
+			hum.WalkSpeed = 16
+			speedButton.Text = "🏃 วิ่งไว"
+			speedButton.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+		end
+	end
+end)
+
+-- 🕊️ ฟังก์ชันบิน
+flyButton.MouseButton1Click:Connect(function()
+	local target = getPlayerByName(nameBox.Text)
+	if not target or not target.Character then return end
+
+	local char = target.Character
+	local hrp = char:WaitForChild("HumanoidRootPart")
+	local hum = char:WaitForChild("Humanoid")
+
+	local alreadyFlying = hrp:FindFirstChild("BodyGyro")
+	if alreadyFlying then
+		for _, v in pairs(hrp:GetChildren()) do
+			if v:IsA("BodyGyro") or v:IsA("BodyVelocity") then v:Destroy() end
+		end
+		hum.PlatformStand = false
+		flyButton.Text = "🕊️ บิน"
+		flyButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+	else
+		hum.PlatformStand = true
+		local bodyGyro = Instance.new("BodyGyro", hrp)
+		bodyGyro.P = 9e4
+		bodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+		local bodyVel = Instance.new("BodyVelocity", hrp)
+		bodyVel.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+
+		flyButton.Text = "🕊️ หยุดบิน"
+		flyButton.BackgroundColor3 = Color3.fromRGB(255, 200, 100)
+	end
+end)
