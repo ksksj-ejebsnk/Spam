@@ -1,0 +1,152 @@
+local player = game.Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- 🪟 ScreenGui
+local gui = Instance.new("ScreenGui", playerGui)
+gui.Name = "AdminUI"
+gui.ResetOnSpawn = false
+
+-- 🎛️ ปุ่มเปิด/ปิดเมนู
+local toggleButton = Instance.new("TextButton", gui)
+toggleButton.Size = UDim2.new(0, 60, 0, 30)
+toggleButton.Position = UDim2.new(0, 10, 0, 10)
+toggleButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+toggleButton.Text = "ของดี"
+toggleButton.TextColor3 = Color3.fromRGB(255,255,255)
+toggleButton.TextScaled = true
+toggleButton.BorderSizePixel = 0
+
+-- 🧱 เฟรมหลัก
+local mainFrame = Instance.new("Frame", gui)
+mainFrame.Size = UDim2.new(0, 260, 0, 330)
+mainFrame.Position = UDim2.new(0, 10, 0, 50)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+mainFrame.Visible = false
+mainFrame.Active = true
+mainFrame.Draggable = true
+
+-- 🏷️ หัวข้อ
+local title = Instance.new("TextLabel", mainFrame)
+title.Size = UDim2.new(1, 0, 0, 40)
+title.BackgroundColor3 = Color3.fromRGB(255, 40, 40)
+title.Text = "ฟังก์ชั่นกากๆ"
+title.TextColor3 = Color3.fromRGB(255,255,255)
+title.TextScaled = true
+title.BorderSizePixel = 0
+
+-- ✏️ ช่องพิมพ์
+local nameBox = Instance.new("TextBox", mainFrame)
+nameBox.Size = UDim2.new(0.9, 0, 0, 35)
+nameBox.Position = UDim2.new(0.05, 0, 0.15, 0)
+nameBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+nameBox.PlaceholderText = "ไร้ประโยชน์"
+nameBox.Text = ""
+nameBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+nameBox.TextScaled = true
+nameBox.BorderSizePixel = 0
+
+-- ฟังก์ชันสร้างปุ่ม
+local function createButton(text, positionY, color)
+	local btn = Instance.new("TextButton", mainFrame)
+	btn.Size = UDim2.new(0.9, 0, 0, 40)
+	btn.Position = UDim2.new(0.05, 0, positionY, 0)
+	btn.BackgroundColor3 = color or Color3.fromRGB(255, 60, 60)
+	btn.Text = text
+	btn.TextColor3 = Color3.fromRGB(255,255,255)
+	btn.TextScaled = true
+	btn.BorderSizePixel = 0
+	return btn
+end
+
+-- ปุ่มต่าง ๆ
+local speedBtn = createButton("🏃 วิ่งไว", 0.32)
+local flyBtn = createButton("🕊️ บิน", 0.48)
+local jumpBtn = createButton("💥 กระโดดสูง", 0.64)
+
+-- ตัวแปรควบคุม
+local isFast = false
+local isFlying = false
+local normalSpeed = 16
+local fastSpeed = 80
+local flySpeed = 60
+local jumpPower = 100
+
+-- ⚡ วิ่งไว
+speedBtn.MouseButton1Click:Connect(function()
+	local hum = player.Character and player.Character:FindFirstChild("Humanoid")
+	if hum then
+		isFast = not isFast
+		hum.WalkSpeed = isFast and fastSpeed or normalSpeed
+		speedBtn.BackgroundColor3 = isFast and Color3.fromRGB(255,150,0) or Color3.fromRGB(255,60,60)
+	end
+end)
+
+-- 💥 กระโดดสูง
+jumpBtn.MouseButton1Click:Connect(function()
+	local hum = player.Character and player.Character:FindFirstChild("Humanoid")
+	if hum then
+		hum.UseJumpPower = true
+		hum.JumpPower = (hum.JumpPower == 50) and jumpPower or 50
+		jumpBtn.BackgroundColor3 = (hum.JumpPower > 50) and Color3.fromRGB(255,150,0) or Color3.fromRGB(255,60,60)
+	end
+end)
+
+-- 🕊️ ระบบบิน (รองรับมือถือ + แก้บัคหยุดบิน)
+local UIS = game:GetService("UserInputService")
+
+flyBtn.MouseButton1Click:Connect(function()
+	local char = player.Character
+	if not char then return end
+	local hrp = char:WaitForChild("HumanoidRootPart")
+	local hum = char:WaitForChild("Humanoid")
+
+	if isFlying then
+		isFlying = false
+		hum.PlatformStand = false
+		for _,v in pairs(hrp:GetChildren()) do
+			if v:IsA("BodyGyro") or v:IsA("BodyVelocity") then v:Destroy() end
+		end
+		flyBtn.Text = "🕊️ บิน"
+		flyBtn.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+	else
+		isFlying = true
+		hum.PlatformStand = true
+		local gyro = Instance.new("BodyGyro", hrp)
+		local vel = Instance.new("BodyVelocity", hrp)
+		gyro.MaxTorque = Vector3.new(9e9,9e9,9e9)
+		vel.MaxForce = Vector3.new(9e9,9e9,9e9)
+		flyBtn.Text = "🕊️ หยุดบิน"
+		flyBtn.BackgroundColor3 = Color3.fromRGB(255,150,0)
+
+		task.spawn(function()
+			while isFlying and hrp and hrp.Parent do
+				task.wait()
+				local cam = workspace.CurrentCamera
+				local dir = Vector3.zero
+
+				-- 🔹 รองรับมือถือ: ถ้าขยับจอยขึ้น = เดินหน้า = บินหน้า
+				if UIS.TouchEnabled then
+					local move = UIS:GetGamepadState(Enum.UserInputType.Gamepad1)[1]
+					if move and move.Position.Y > 0.2 then
+						dir += cam.CFrame.LookVector
+					end
+				else
+					-- 🔹 สำหรับคีย์บอร์ด
+					if UIS:IsKeyDown(Enum.KeyCode.W) then dir += cam.CFrame.LookVector end
+					if UIS:IsKeyDown(Enum.KeyCode.S) then dir -= cam.CFrame.LookVector end
+					if UIS:IsKeyDown(Enum.KeyCode.A) then dir -= cam.CFrame.RightVector end
+					if UIS:IsKeyDown(Enum.KeyCode.D) then dir += cam.CFrame.RightVector end
+				end
+
+				-- ถ้าไม่ได้กดเดิน = หยุดนิ่งกลางอากาศ
+				vel.Velocity = dir * flySpeed
+				gyro.CFrame = CFrame.new(hrp.Position, hrp.Position + cam.CFrame.LookVector)
+			end
+		end)
+	end
+end)
+
+-- 🔄 เปิด/ปิดเมนู
+toggleButton.MouseButton1Click:Connect(function()
+	mainFrame.Visible = not mainFrame.Visible
+end)
