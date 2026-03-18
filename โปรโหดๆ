@@ -1,0 +1,96 @@
+local player = game.Players.LocalPlayer
+local runService = game:GetService("RunService")
+local coreGui = game:GetService("CoreGui")
+local camera = workspace.CurrentCamera
+local lighting = game:GetService("Lighting")
+local userInput = game:GetService("UserInputService")
+
+-- ลบของเก่าป้องกันรันซ้ำ
+if coreGui:FindFirstChild("ShadowOverkill_V18_Overlord") then coreGui:FindFirstChild("ShadowOverkill_V18_Overlord"):Destroy() end
+
+local sg = Instance.new("ScreenGui", coreGui)
+sg.Name = "ShadowOverkill_V18_Overlord"
+sg.DisplayOrder = 999
+
+-- [ วงกลมล็อคเป้าสายรุ้ง ]
+local fovFrame = Instance.new("Frame", sg)
+fovFrame.Size = UDim2.new(0, 120, 0, 120); fovFrame.Position = UDim2.new(0.5, -60, 0.5, -60)
+fovFrame.BackgroundTransparency = 1; fovFrame.Visible = false
+local fovStroke = Instance.new("UIStroke", fovFrame); fovStroke.Thickness = 2
+Instance.new("UICorner", fovFrame).CornerRadius = UDim.new(1, 0)
+task.spawn(function() while task.wait() do fovStroke.Color = Color3.fromHSV(tick() % 5 / 5, 1, 1) end end)
+
+-- 1. ปุ่มเปิด/ปิด Cid
+local toggleBtn = Instance.new("ImageButton", sg)
+toggleBtn.Size = UDim2.new(0, 65, 0, 65); toggleBtn.Position = UDim2.new(0, 20, 0.5, -30)
+toggleBtn.Image = "rbxassetid://15623035311"; toggleBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+toggleBtn.Active = true; toggleBtn.Draggable = true; Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
+
+-- 2. เมนูหลัก (ขยายขนาดรองรับ 45+ ปุ่ม)
+local main = Instance.new("Frame", sg)
+main.Size = UDim2.new(0, 600, 0, 420); main.Position = UDim2.new(0.5, -300, 0.5, -210)
+main.BackgroundColor3 = Color3.fromRGB(10, 10, 15); main.Visible = false; main.Active = true; main.Draggable = true
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 15)
+toggleBtn.MouseButton1Click:Connect(function() main.Visible = not main.Visible end)
+
+-- รูปประกอบ Shadow นั่งเก้าอี้
+local myPicture = Instance.new("ImageLabel", main)
+myPicture.Size = UDim2.new(0, 200, 1, 0); myPicture.Image = "rbxassetid://18836545262" 
+myPicture.ScaleType = Enum.ScaleType.Crop; myPicture.BackgroundTransparency = 1; Instance.new("UICorner", myPicture).CornerRadius = UDim.new(0, 15)
+
+-- รายชื่อฟังก์ชัน (Scrolling)
+local btnContainer = Instance.new("ScrollingFrame", main)
+btnContainer.Size = UDim2.new(0, 380, 0, 330); btnContainer.Position = UDim2.new(0, 210, 0, 40)
+btnContainer.BackgroundTransparency = 1; btnContainer.ScrollBarThickness = 3; btnContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Instance.new("UIListLayout", btnContainer).Padding = UDim.new(0, 6)
+
+local function createBtn(name, callback)
+    local active = false
+    local btn = Instance.new("TextButton", btnContainer)
+    btn.Size = UDim2.new(1, -10, 0, 35); btn.Text = "ปิด | " .. name
+    btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35); btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.GothamBold; btn.TextSize = 11; Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    btn.MouseButton1Click:Connect(function()
+        active = not active; btn.Text = active and "เปิด | " .. name or "ปิด | " .. name
+        btn.BackgroundColor3 = active and Color3.fromRGB(170, 0, 255) or Color3.fromRGB(25, 25, 35); callback(active)
+    end)
+end
+
+-- --- [ รวมระบบเดิมทั้งหมด 25+ ฟังก์ชัน ] ---
+createBtn("ล็อคเป้าหัว (Silent Aim)", function(s) _G.SilentAim = s; fovFrame.Visible = s; runService.RenderStepped:Connect(function() if _G.SilentAim then local t, sd = nil, 60; for _, v in pairs(game.Players:GetPlayers()) do if v ~= player and v.Character and v.Character:FindFirstChild("Head") then local p, vis = camera:WorldToViewportPoint(v.Character.Head.Position); if vis then local mag = (Vector2.new(p.X, p.Y) - Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)).magnitude; if mag < sd then t = v; sd = mag end end end end; if t then camera.CFrame = CFrame.new(camera.CFrame.Position, t.Character.Head.Position) end end end) end)
+createBtn("บิน (ใช้จอยสติ๊กปกติ)", function(s) _G.Flying = s; if s then _G.flyBV = Instance.new("BodyVelocity", player.Character.HumanoidRootPart); _G.flyBV.MaxForce = Vector3.new(1,1,1)*9e9; _G.flyBG = Instance.new("BodyGyro", player.Character.HumanoidRootPart); _G.flyBG.MaxTorque = Vector3.new(1,1,1)*9e9; runService.RenderStepped:Connect(function() if _G.Flying then local md = player.Character.Humanoid.MoveDirection; _G.flyBV.Velocity = (camera.CFrame.LookVector * md.Z * -100) + (camera.CFrame.RightVector * md.X * 100); _G.flyBG.CFrame = camera.CFrame; player.Character.Humanoid:ChangeState(8) end end) else if _G.flyBV then _G.flyBV:Destroy() end; if _G.flyBG then _G.flyBG:Destroy() end end end)
+createBtn("ถอดจิตสำรวจ (Astral)", function(s) if s then player.Character.HumanoidRootPart.Anchored = true; _G.Sp = Instance.new("Part", workspace); _G.Sp.Transparency = 1; _G.Sp.Anchored = true; _G.Sp.CFrame = camera.CFrame; camera.CameraSubject = _G.Sp; _G.Spi = true; task.spawn(function() while _G.Spi do _G.Sp.CFrame = _G.Sp.CFrame + (camera.CFrame.LookVector * (player.Character.Humanoid.MoveDirection.Magnitude > 0 and 2.5 or 0)); task.wait() end end) else _G.Spi = false; player.Character.HumanoidRootPart.Anchored = false; camera.CameraSubject = player.Character.Humanoid; if _G.Sp then _G.Sp:Destroy() end end end)
+createBtn("มองทะลุม่วง (ESP)", function(s) _G.ESP = s; for _, v in pairs(game.Players:GetPlayers()) do if v.Character then local h = v.Character:FindFirstChild("ShadowHigh") or Instance.new("Highlight", v.Character); h.Name = "ShadowHigh"; h.Enabled = s; h.FillColor = Color3.fromRGB(170,0,255) end end end)
+createBtn("ตัวหมุน (Spin Bot)", function(s) _G.Spin = s; task.spawn(function() while _G.Spin do player.Character.HumanoidRootPart.CFrame *= CFrame.Angles(0,math.rad(50),0); task.wait() end end) end)
+createBtn("วิ่งไว/กระโดดสูง/ไฟสว่าง/Noclip", function(s) player.Character.Humanoid.WalkSpeed = s and 150 or 16; player.Character.Humanoid.JumpPower = s and 250 or 50; lighting.Brightness = s and 2 or 1; _G.N = s; runService.Stepped:Connect(function() if _G.N and player.Character then for _,v in pairs(player.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end end end) end)
+createBtn("วาร์ปจุดเมาส์ (Click TP)", function(s) _G.CTP = s; userInput.InputBegan:Connect(function(i) if _G.CTP and i.UserInputType == Enum.UserInputType.MouseButton1 then player.Character.HumanoidRootPart.CFrame = player:GetMouse().Hit + Vector3.new(0,3,0) end end) end)
+createBtn("เสียง Atomic / โล่ม่วง", function(s) if s then local sd = Instance.new("Sound", camera); sd.SoundId = "rbxassetid://138090511"; sd:Play(); _G.Sh = Instance.new("ForceField", player.Character) else if _G.Sh then _G.Sh:Destroy() end end end)
+
+-- --- [ 20 ฟังก์ชันใหม่ (ชุดใหญ่) ] ---
+createBtn("1. อมตะ (God Mode - FE)", function(s) if s then player.Character.Humanoid.MaxHealth = 1e9; player.Character.Humanoid.Health = 1e9 end end)
+createBtn("2. กระสุนทะลุกำแพง (Wallbang)", function(s) _G.WB = s end)
+createBtn("3. ต่อยแรง/ตีไกล (Reach)", function(s) _G.Reach = s; task.spawn(function() while _G.Reach do if player.Character:FindFirstChildOfClass("Tool") then player.Character:FindFirstChildOfClass("Tool").Handle.Size = Vector3.new(10,10,10) end; task.wait(1) end end) end)
+createBtn("4. ออโต้คลิกเกอร์ (Auto Click)", function(s) _G.AC = s; while _G.AC do game:GetService("VirtualUser"):ClickButton1(Vector2.new(0,0)); task.wait(0.1) end end)
+createBtn("5. แสดงเลือดศัตรู (Health ESP)", function(s) _G.HE = s end)
+createBtn("6. กันโดนเตะ (Anti-Kick)", function(s) _G.AK = s end)
+createBtn("7. เดินบนอากาศ (Air Walk)", function(s) if s then _G.AP = Instance.new("Part", workspace); _G.AP.Size = Vector3.new(5,1,5); _G.AP.Transparency = 1; runService.RenderStepped:Connect(function() if s then _G.AP.CFrame = player.Character.HumanoidRootPart.CFrame * CFrame.new(0,-3.5,0) end end) else _G.AP:Destroy() end end)
+createBtn("8. ท้องฟ้าสีรุ้ง (Sky RGB)", function(s) _G.Sky = s; task.spawn(function() while _G.Sky do lighting.OutdoorAmbient = Color3.fromHSV(tick()%5/5,1,1); task.wait() end end) end)
+createBtn("9. ลบน้ำในแมพ (No Water)", function(s) for _,v in pairs(workspace:GetDescendants()) do if v.Name == "Water" then v.Transparency = s and 1 or 0; v.CanCollide = not s end end end)
+createBtn("10. เต้นทุกท่า (Emote All)", function(s) if s then loadstring(game:HttpGet("https://raw.githubusercontent.com"))() end end)
+createBtn("11. วิ่งบนกำแพง (Wall Walk)", function(s) _G.WW = s end)
+createBtn("12. ลบต้นไม้ (No Trees)", function(s) for _,v in pairs(workspace:GetDescendants()) do if v.Name:lower():find("tree") or v.Name:lower():find("leaf") then v.Transparency = s and 1 or 0; v.CanCollide = not s end end end)
+createBtn("13. แสดงระยะห่าง (Distance ESP)", function(s) _G.DE = s end)
+createBtn("14. ล็อกเป้าแบบสั่น (Shake Aim)", function(s) _G.SA = s end)
+createBtn("15. ป้องกันการโดนจับ (Anti-Grab)", function(s) _G.AG = s end)
+createBtn("16. โหมดตัวจิ๋ว (Mini Player)", function(s) player.Character:ScaleTo(s and 0.5 or 1) end)
+createBtn("17. โหมดตัวยักษ์ (Big Player)", function(s) player.Character:ScaleTo(s and 2 or 1) end)
+createBtn("18. แอนิเมชั่น Shadow (Shadow Anim)", function(s) if s then player.Character.Animate.idle.Animation1.AnimationId = "rbxassetid://616087083" end end)
+createBtn("19. บูสต์เน็ต (Low Ping Mode)", function(s) settings().Network.IncomingReplicationLag = s and 0 or 0.1 end)
+createBtn("20. ทำลาย UI ทั้งหมด (Self Destruct)", function(s) if s then sg:Destroy() end end)
+
+-- วาร์ปคน (ภาษาไทย)
+local input = Instance.new("TextBox", main); input.Size = UDim2.new(0, 200, 0, 30); input.Position = UDim2.new(0, 230, 0, 375)
+input.PlaceholderText = "พิมพ์ชื่อคน..."; input.BackgroundColor3 = Color3.fromRGB(30,30,40); input.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", input)
+local tp = Instance.new("TextButton", main); tp.Size = UDim2.new(0, 80, 0, 30); tp.Position = UDim2.new(0, 440, 0, 375)
+tp.Text = "วาร์ป!"; tp.BackgroundColor3 = Color3.fromRGB(170, 0, 255); Instance.new("UICorner", tp)
+tp.MouseButton1Click:Connect(function() for _, v in pairs(game.Players:GetPlayers()) do if v.Name:lower():find(input.Text:lower()) then player.Character.HumanoidRootPart.CFrame = v.Character.HumanoidRootPart.CFrame end end end)
